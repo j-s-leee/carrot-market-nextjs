@@ -1,18 +1,17 @@
 "use server"
+import { PASSWORD_MIN_LENGTH, PASSWORD_REGEX, PASSWORD_REGEX_ERROR } from "@/lib/constants";
 import {z} from "zod"
 
-const passwordRegex = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*?[#?!@$%^&*-]).+$/);
 const checkPasswords = ({password, confirm_password}:{password:string, confirm_password:string}) => password === confirm_password
 
 const formSchema = z.object({
     username: z.string({
         invalid_type_error: "Username must be a string!",
         required_error: "Where is username?",
-    }).min(3, "too short").max(10, "too looooooooong")
-    .trim().toLowerCase(),
+    }).trim().toLowerCase(),
     email: z.string().email(),
-    password: z.string().min(10).regex(passwordRegex, "password must contain at least one lowercase, UPPERCASE, number, special characters like !@#$%^&*"),
-    confirm_password: z.string().min(10),
+    password: z.string().min(PASSWORD_MIN_LENGTH).regex(PASSWORD_REGEX, PASSWORD_REGEX_ERROR),
+    confirm_password: z.string().min(PASSWORD_MIN_LENGTH),
 }).refine(checkPasswords, {
     message: "wrong password",
     path: ["confirm_password"]
@@ -20,7 +19,7 @@ const formSchema = z.object({
 
 
 
-export async function handleForm(prevState:any, formData:FormData) {
+export async function createAccount(prevState:any, formData:FormData) {
     const data = {
         username: formData.get("username"),
         email: formData.get("email"),
