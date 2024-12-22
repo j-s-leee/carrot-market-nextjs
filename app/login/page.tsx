@@ -3,11 +3,11 @@
 import Input from "@/components/input";
 import Button from "@/components/button";
 import SocialLogin from "@/components/social-login";
-import { login } from "./actions";
+import { loginAction } from "./actions";
 import { useActionState } from "react";
 
 export default function Login() {
-    const [state, dispatch] = useActionState(login, null);
+    const [state, dispatch] = useActionState(loginAction, null);
     return (
         <div className="flex flex-col gap-10 py-8 px-6">
             <div className="flex flex-col gap-2 *:font-medium">

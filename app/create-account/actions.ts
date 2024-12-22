@@ -3,8 +3,8 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_REGEX, PASSWORD_REGEX_ERROR } from "@/lib
 import db from "@/lib/db";
 import {z} from "zod"
 import bcrypt from "bcrypt";
-import { redirect } from "next/navigation";
 import getSession from "@/lib/session";
+import { redirect } from "next/navigation";
 
 const checkPasswords = ({password, confirm_password}:{password:string, confirm_password:string}) => password === confirm_password
 

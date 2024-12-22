@@ -28,6 +28,7 @@ export default async function Profile() {
     return <div>
             <h1>profile</h1>
             <h1>welcome {user?.username}</h1>
+            {user?.avatar ? <img src={user.avatar} /> : null}
             <form action={logOut}>
                 <button>Log out</button>
             </form>
