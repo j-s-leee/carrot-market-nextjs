@@ -51,6 +51,7 @@ async function getToken() {
 
 interface ActionState {
     token: boolean;
+    phone?: string;
 }
 
 export async function smsLogin(prevState: ActionState, formData: FormData) {
@@ -60,7 +61,8 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
         const result = phoneSchema.safeParse(phone);
         if (!result.success) {
             return {
-                token: false,
+                token: prevState.token,
+                phone: prevState.phone,
                 error: result.error.flatten(),
             }
         } else {
@@ -80,6 +82,7 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
             await db.sMSToken.create({
                 data: {
                     token,
+                    phone: result.data,
                     user: {
                         connectOrCreate: {
                             where: {
@@ -99,21 +102,48 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
 
             // and  return
             return {
-                token: true
+                token: true,
+                phone: result.data
             }
         }
     } else {
-        const result = await tokenSchema.spa(token);
-        if (!result.success) {
+        console.log('prevState: ', prevState);
+        const phoneResult = phoneSchema.safeParse(phone);
+        const tokenResult = await tokenSchema.spa(token);
+
+
+        /**
+         * FIXME fieldErrors처럼 각 필드에 맞는 에러 메시지가 표기되어야함.
+         * 또는 전체 폼에 에러가 하나 표기되어야함.
+         */
+        
+        if (!phoneResult.success) {
             return {
-                token: true,
-                error: result.error.flatten(),
+                token: prevState.token,
+                phone: prevState.phone,
+                error: phoneResult.error.flatten(),
+            }
+        } 
+
+        if (phone !== prevState.phone) {
+            return {
+                token: prevState.token,
+                phone: prevState.phone,
+                // new error
+            }
+        }
+
+        if (!tokenResult.success) {
+            return {
+                token: prevState.token,
+                phone: prevState.phone,
+                error: tokenResult.error.flatten(),
             }
         } else {
             // validate token
             const token = await db.sMSToken.findUnique({
                 where: {
-                    token: result.data.toString(),
+                    token: tokenResult.data.toString(),
                 },
                 select: {
                     id: true,
