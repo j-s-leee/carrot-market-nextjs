@@ -4,6 +4,7 @@ import validator from "validator"
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import db from "@/lib/db";
+import sessionLogin from "@/lib/session-login";
 
 const phoneSchema = z.string()
     .trim()
@@ -11,10 +12,41 @@ const phoneSchema = z.string()
         (phone) => validator.isMobilePhone(phone, "ko-KR"),
         "Wrong phone format"
     );
-const tokenSchema = z.coerce.number().min(100000).max(999999);
+
+async function tokenExists(token:number) {
+    const exists = await db.sMSToken.findUnique({
+        where: {
+            token: token.toString(),
+        },
+        select: {
+            id: true,
+        }
+    });
+
+    return Boolean(exists);
+}
+
+const tokenSchema = z.coerce
+    .number()
+    .min(100000)
+    .max(999999)
+    .refine(tokenExists, "This token does not exists.");
 
 async function getToken() {
-    return crypto.randomInt(100000, 999999).toString();
+    const token = crypto.randomInt(100000, 999999).toString();
+    const exists = await db.sMSToken.findUnique({
+        where: {
+            token
+        },
+        select: {
+            id: true
+        }
+    });
+    if (exists) {
+        return getToken();
+    } else {
+        return token;
+    }
 }
 
 interface ActionState {
@@ -45,7 +77,7 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
             const token = await getToken();
             
             // save token
-            db.sMSToken.create({
+            await db.sMSToken.create({
                 data: {
                     token,
                     user: {
@@ -60,9 +92,10 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
                         }
                     }
                 }
-            })
+            });
 
             // send token sms
+            console.log(`token ${token} is sent to ${phone}`);
 
             // and  return
             return {
@@ -70,7 +103,7 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
             }
         }
     } else {
-        const result = tokenSchema.safeParse(token);
+        const result = await tokenSchema.spa(token);
         if (!result.success) {
             return {
                 token: true,
@@ -78,9 +111,24 @@ export async function smsLogin(prevState: ActionState, formData: FormData) {
             }
         } else {
             // validate token
-            // validate phone number
+            const token = await db.sMSToken.findUnique({
+                where: {
+                    token: result.data.toString(),
+                },
+                select: {
+                    id: true,
+                    userId: true
+                }
+            });
+
             // login
-            redirect("/");
+            await sessionLogin(token!.userId);
+            await db.sMSToken.delete({
+                where: {
+                    id: token!.id
+                }
+            });
+            redirect("/profile");
         }
     }
 }
