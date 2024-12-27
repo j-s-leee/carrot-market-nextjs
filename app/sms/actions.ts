@@ -20,7 +20,7 @@ async function tokenExists(token:number) {
         select: { id: true }
     });
 
-    return Boolean(exists);
+    return !!exists;
 }
 
 const tokenSchema = z.coerce
@@ -35,10 +35,7 @@ async function getToken(): Promise<string> {
         where: { token },
         select: { id: true }
     });
-    if (exists) {
-        return getToken();
-    }
-    return token;
+    return exists ? getToken() : token;
 }
 
 interface ActionState {
@@ -130,12 +127,7 @@ export async function smsLogin(
         });
 
         if (!tokenRecord) {
-            return {
-                ...prevState,
-                error: {
-                    token: ["Token Validation failed."]
-                }
-            }
+            return { ...prevState, error: { token: ["Token Validation failed."] } };
         }
 
         // login
