@@ -5,22 +5,19 @@ import { redirect } from "next/navigation";
 import crypto from "crypto";
 import db from "@/lib/db";
 import sessionLogin from "@/lib/session-login";
+import { sendSMSToken } from "@/utils/sms";
 
 const phoneSchema = z.string()
     .trim()
     .refine(
         (phone) => validator.isMobilePhone(phone, "ko-KR"),
-        "Wrong phone format"
+        { message: "Wrong phone format" }
     );
 
 async function tokenExists(token:number) {
     const exists = await db.sMSToken.findUnique({
-        where: {
-            token: token.toString(),
-        },
-        select: {
-            id: true,
-        }
+        where: { token: token.toString() },
+        select: { id: true }
     });
 
     return Boolean(exists);
@@ -30,135 +27,124 @@ const tokenSchema = z.coerce
     .number()
     .min(100000)
     .max(999999)
-    .refine(tokenExists, "This token does not exists.");
+    .refine(tokenExists, {message: "This token does not exists."});
 
-async function getToken() {
+async function getToken(): Promise<string> {
     const token = crypto.randomInt(100000, 999999).toString();
     const exists = await db.sMSToken.findUnique({
-        where: {
-            token
-        },
-        select: {
-            id: true
-        }
+        where: { token },
+        select: { id: true }
     });
     if (exists) {
         return getToken();
-    } else {
-        return token;
     }
+    return token;
 }
 
 interface ActionState {
     token: boolean;
     phone?: string;
+    error?: Record<string, string[]>;
 }
 
-export async function smsLogin(prevState: ActionState, formData: FormData) {
-    const phone = formData.get('phone');
-    const token = formData.get('token');
-    if (!prevState.token) {
-        const result = phoneSchema.safeParse(phone);
-        if (!result.success) {
-            return {
-                token: prevState.token,
-                phone: prevState.phone,
-                error: result.error.flatten(),
-            }
-        } else {
-            // trunk token with phone number
-            await db.sMSToken.deleteMany({
-                where: {
-                    user: {
-                        phone: result.data
-                    }
-                }
-            });
+export async function smsLogin(
+    prevState: ActionState, formData: FormData
+): Promise<ActionState> {
+    const phone = formData.get('phone') as string;
+    const token = formData.get('token') as string;
 
-            // create token
-            const token = await getToken();
-            
-            // save token
-            await db.sMSToken.create({
-                data: {
-                    token,
-                    phone: result.data,
-                    user: {
-                        connectOrCreate: {
-                            where: {
-                                phone: result.data
-                            },
-                            create: {
-                                username: crypto.randomBytes(10).toString("hex"),
-                                phone: result.data
-                            }
+    if (!prevState.token) {
+        const phoneValidation = phoneSchema.safeParse(phone);
+
+        if (!phoneValidation.success) {
+            return {
+                ...prevState,
+                error: {phone: phoneValidation.error.errors.map((e) => e.message),}
+            }
+        }
+
+        // trunk token with phone number
+        await db.sMSToken.deleteMany({
+            where: {
+                phone: phoneValidation.data
+            }
+        });
+
+        // create token
+        const generatedToken = await getToken();
+        
+        // save token
+        await db.sMSToken.create({
+            data: {
+                token: generatedToken,
+                phone: phoneValidation.data,
+                user: {
+                    connectOrCreate: {
+                        where: {
+                            phone: phoneValidation.data
+                        },
+                        create: {
+                            username: crypto.randomBytes(5).toString("hex"),
+                            phone: phoneValidation.data
                         }
                     }
                 }
-            });
-
-            // send token sms
-            console.log(`token ${token} is sent to ${phone}`);
-
-            // and  return
-            return {
-                token: true,
-                phone: result.data
             }
+        });
+
+        // send token sms
+        await sendSMSToken(phoneValidation.data, generatedToken);
+
+        // and  return
+        return {
+            token: true,
+            phone: phoneValidation.data
         }
     } else {
-        console.log('prevState: ', prevState);
-        const phoneResult = phoneSchema.safeParse(phone);
-        const tokenResult = await tokenSchema.spa(token);
 
-
-        /**
-         * FIXME fieldErrors처럼 각 필드에 맞는 에러 메시지가 표기되어야함.
-         * 또는 전체 폼에 에러가 하나 표기되어야함.
-         */
+        const phoneValidation = phoneSchema.safeParse(phone);
+        const tokenValidation = await tokenSchema.spa(token);
         
-        if (!phoneResult.success) {
-            return {
-                token: prevState.token,
-                phone: prevState.phone,
-                error: phoneResult.error.flatten(),
-            }
-        } 
+        if (!phoneValidation.success) {
+            return { ...prevState, error: { phone: phoneValidation.error.errors.map((e) => e.message) } };
+        }
 
-        if (phone !== prevState.phone) {
+        if (!tokenValidation.success) {
+            return { ...prevState, error: { token: tokenValidation.error.errors.map((e) => e.message) } };
+        }
+
+
+        if (phoneValidation.data !== prevState.phone) {
+            return { ...prevState, error: { phone: ["Phone number mismatch"] } };
+        }
+
+        // validate token
+        const tokenRecord = await db.sMSToken.findUnique({
+            where: {
+                token: tokenValidation.data.toString(),
+            },
+            select: {
+                id: true,
+                userId: true
+            }
+        });
+
+        if (!tokenRecord) {
             return {
-                token: prevState.token,
-                phone: prevState.phone,
-                // new error
+                ...prevState,
+                error: {
+                    token: ["Token Validation failed."]
+                }
             }
         }
 
-        if (!tokenResult.success) {
-            return {
-                token: prevState.token,
-                phone: prevState.phone,
-                error: tokenResult.error.flatten(),
+        // login
+        await sessionLogin(tokenRecord.userId);
+        await db.sMSToken.delete({
+            where: {
+                id: tokenRecord.id
             }
-        } else {
-            // validate token
-            const token = await db.sMSToken.findUnique({
-                where: {
-                    token: tokenResult.data.toString(),
-                },
-                select: {
-                    id: true,
-                    userId: true
-                }
-            });
-
-            // login
-            await sessionLogin(token!.userId);
-            await db.sMSToken.delete({
-                where: {
-                    id: token!.id
-                }
-            });
-            redirect("/profile");
-        }
+        });
+        redirect("/profile");
     }
 }
