@@ -4,6 +4,7 @@ PRAGMA foreign_keys=OFF;
 CREATE TABLE "new_SMSToken" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "token" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL,
     "userId" INTEGER NOT NULL,
