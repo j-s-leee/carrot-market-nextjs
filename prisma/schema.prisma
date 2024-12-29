@@ -33,6 +33,7 @@ model SMSToken {
 model Product {
   id          Int      @id @default(autoincrement())
   title       String
+  photo       String
   price       Float
   description String
   created_at  DateTime @default(now())
