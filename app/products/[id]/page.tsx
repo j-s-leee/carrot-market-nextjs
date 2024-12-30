@@ -4,7 +4,7 @@ import { formatToWon } from "@/utils/format";
 import { UserIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 async function getIsOwner(userId: number) {
   const session = await getSession();
@@ -41,13 +41,22 @@ export default async function ProductDetail({
   const product = await getProduct(Number(id));
   if (!product) return notFound();
   const isOwner = await getIsOwner(product.userId);
+
+  const deleteProduct = async () => {
+    "use server";
+
+    await db.product.delete({
+      where: { id: Number(id) },
+    });
+    redirect("/products");
+  };
   return (
     <div>
       <div className="relative aspect-square">
         <Image
           className="object-cover"
           fill
-          src={product.photo}
+          src={`${product.photo}/public`}
           alt={product.title}
         />
       </div>
@@ -77,9 +86,19 @@ export default async function ProductDetail({
           {formatToWon(product.price)}원
         </span>
         {isOwner && (
-          <button className="bg-red-500 px-5 py-2.5 rounded-md text-white font-semibold">
-            Delete product
-          </button>
+          <>
+            <Link
+              href={`./${id}/edit`}
+              className="bg-yellow-500 px-5 py-2.5 rounded-md text-white font-semibold"
+            >
+              Edit
+            </Link>
+            <form action={deleteProduct}>
+              <button className="bg-red-500 px-5 py-2.5 rounded-md text-white font-semibold">
+                Delete
+              </button>
+            </form>
+          </>
         )}
         <Link
           className="bg-orange-500 px-5 py-2.5 rounded-md text-white font-semibold"
