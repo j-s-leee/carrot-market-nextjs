@@ -1,4 +1,3 @@
-import ListProduct from "@/components/list-product";
 import ProductList from "@/components/product-list";
 import { PAGE_SIZE } from "@/lib/constants";
 import db from "@/lib/db";
@@ -10,7 +9,6 @@ import Link from "next/link";
 const getCachedProducts = nextCache(getProducts, ["home-products"]);
 
 async function getProducts() {
-  console.log("hit!!!!");
   const products = await db.product.findMany({
     select: {
       title: true,
