@@ -1,10 +1,12 @@
-import ListProduct from "@/components/list-product";
 import ProductList from "@/components/product-list";
 import { PAGE_SIZE } from "@/lib/constants";
 import db from "@/lib/db";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { Prisma } from "@prisma/client";
+import { unstable_cache as nextCache } from "next/cache";
 import Link from "next/link";
+
+const getCachedProducts = nextCache(getProducts, ["home-products"]);
 
 async function getProducts() {
   const products = await db.product.findMany({
@@ -26,7 +28,7 @@ async function getProducts() {
 export type IProductList = Prisma.PromiseReturnType<typeof getProducts>;
 
 export default async function Products() {
-  const products = await getProducts();
+  const products = await getCachedProducts();
   return (
     <div>
       <ProductList initialProducts={products} />
