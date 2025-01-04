@@ -26,7 +26,7 @@ export default function ChatMessageList({
 }: ChatMessageListProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [message, setMessage] = useState("");
-  const chatContainerRef: RefObject<HTMLDivElement> = useRef(null);
+  const chatContainerRef: RefObject<HTMLDivElement | null> = useRef(null);
   const channel = useRef<RealtimeChannel>(null);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
