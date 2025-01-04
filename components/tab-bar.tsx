@@ -37,8 +37,8 @@ export default function TabBar() {
         )}
         <span>동네생활</span>
       </Link>
-      <Link href="/chat" className="flex flex-col items-center gap-px">
-        {pathname === "/chat" ? (
+      <Link href="/chats" className="flex flex-col items-center gap-px">
+        {pathname === "/chats" ? (
           <SolidChatIcon className="size-7" />
         ) : (
           <OutlineChatIcon className="size-7" />
