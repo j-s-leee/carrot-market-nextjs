@@ -7,7 +7,7 @@ import { formatToTimeAgo } from "@/utils/format";
 import { ArrowUpCircleIcon } from "@heroicons/react/24/solid";
 import { createClient, RealtimeChannel } from "@supabase/supabase-js";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 
 interface ChatMessageListProps {
   initialMessages: InitialChatMessages;
@@ -26,46 +26,32 @@ export default function ChatMessageList({
 }: ChatMessageListProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [message, setMessage] = useState("");
-  const channel = useRef<RealtimeChannel>();
+  const chatContainerRef: RefObject<HTMLDivElement> = useRef(null);
+  const channel = useRef<RealtimeChannel>(null);
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      target: { value },
-    } = e;
-    setMessage(value);
+    setMessage(e.target.value);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessages((prevMsgs) => [
-      ...prevMsgs,
-      {
-        id: Date.now(),
-        payload: message,
-        created_at: new Date(),
-        userId,
-        user: {
-          username: "string",
-          avatar: "xxx",
-        },
-      },
-    ]);
+    const newMessage = {
+      id: Date.now(),
+      payload: message,
+      created_at: new Date(),
+      userId,
+      user: { username, avatar },
+    };
+    setMessages((prevMsgs) => [...prevMsgs, newMessage]);
     channel.current?.send({
       type: "broadcast",
       event: "message",
-      payload: {
-        id: Date.now(),
-        payload: message,
-        created_at: new Date(),
-        userId,
-        user: {
-          username,
-          avatar,
-        },
-      },
+      payload: newMessage,
     });
     await saveMessage(message, chatRoomId);
     setMessage("");
   };
+
   useEffect(() => {
     const client = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
     channel.current = client.channel(`room-${chatRoomId}`);
@@ -79,51 +65,67 @@ export default function ChatMessageList({
     };
   }, [chatRoomId]);
 
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      // 비동기적으로 DOM 업데이트 이후 스크롤 설정
+      setTimeout(() => {
+        chatContainerRef.current!.scrollTop =
+          chatContainerRef.current!.scrollHeight;
+      }, 0);
+    }
+  }, [messages]);
+
   return (
-    <div className="p-5 flex flex-col gap-5 min-h-screen justify-end">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          className={`flex gap-2 items-start ${
-            message.userId === userId ? "justify-end" : ""
-          }`}
-        >
-          {message.userId === userId ? null : (
-            <Image
-              src={message.user.avatar!}
-              alt={message.user.username}
-              width={50}
-              height={50}
-              className="size-8 rounded-full"
-            />
-          )}
+    <div className="pl-5 pr-5 pb-5 flex flex-col gap-5 max-h-screen justify-end">
+      {/* 채팅 메시지 목록 */}
+      <div
+        ref={chatContainerRef}
+        className="flex-grow flex flex-col gap-5 overflow-y-auto scroll-hidden"
+      >
+        {messages.map((message) => (
           <div
-            className={`flex flex-col gap-1 ${
-              message.userId === userId ? "items-end" : ""
+            key={message.id}
+            className={`flex gap-2 items-start ${
+              message.userId === userId ? "justify-end" : ""
             }`}
           >
-            <span
-              className={`${
-                message.userId === userId ? "bg-neutral-500" : "bg-orange-500"
-              } p-2.5 rounded-md`}
+            {message.userId === userId ? null : (
+              <Image
+                src={message.user.avatar!}
+                alt={message.user.username}
+                width={50}
+                height={50}
+                className="size-8 rounded-full"
+              />
+            )}
+            <div
+              className={`flex flex-col gap-1 ${
+                message.userId === userId ? "items-end" : ""
+              }`}
             >
-              {message.payload}
-            </span>
-            <span className="text-xs">
-              {formatToTimeAgo(message.created_at.toString())}
-            </span>
+              <span
+                className={`${
+                  message.userId === userId ? "bg-neutral-500" : "bg-orange-500"
+                } p-2.5 rounded-md`}
+              >
+                {message.payload}
+              </span>
+              <span className="text-xs">
+                {formatToTimeAgo(message.created_at.toString())}
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {/* 입력창 */}
       <form className="flex relative" onSubmit={onSubmit}>
         <input
           type="text"
           required
           onChange={onChange}
           value={message}
-          className="bg-transparent rounded-full w-full h-10 focus:outline-none
-          px-5 ring-2 focus:ring-4 transition ring-neutral-200 focus:ring-neutral-50
-          border-none placeholder:text-neutral-400"
+          className="bg-transparent rounded-full w-full h-10 focus:outline-none px-5 ring-2 focus:ring-4 transition ring-neutral-200 focus:ring-neutral-50 border-none placeholder:text-neutral-400"
           placeholder="Write a message..."
           name={message}
         />
