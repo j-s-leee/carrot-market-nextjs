@@ -1,9 +1,9 @@
 import CloseModalButton from "@/components/close-modal-button";
 import db from "@/lib/db";
-import { formatToTimeAgo, formatToWon } from "@/utils/format";
-import { PhotoIcon, UserIcon } from "@heroicons/react/24/solid";
+import { formatToWon } from "@/utils/format";
+import { UserIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function Modal({ params }: { params: { id: string } }) {
   const { id } = await params;

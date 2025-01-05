@@ -1,6 +1,5 @@
 "use server";
 
-import fs from "fs/promises";
 import getSession from "@/lib/session";
 import db from "@/lib/db";
 import { redirect } from "next/navigation";
