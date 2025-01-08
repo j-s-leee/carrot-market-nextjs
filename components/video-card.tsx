@@ -10,16 +10,16 @@ type Video = {
 };
 
 export default function VideoCard({ video }: { video: Video }) {
+  console.log(video);
   return (
     <div className="border border-gray-700 rounded-md overflow-hidden">
       <div className="relative aspect-video">
         {video.thumbnail ? (
-          <Image
-            src={video.thumbnail}
-            alt={video.meta.name}
-            fill
-            className="object-cover"
-          />
+          <iframe
+            src={`https://${process.env.CLOUDFLARE_DOMAIN}/${video.uid}/iframe`}
+            allow="accelerometer; gyroscope; encrypted-media;"
+            className="w-full h-full rounded-md"
+          ></iframe>
         ) : (
           <div className="flex items-center justify-center bg-gray-800 h-full text-white">
             No Thumbnail
@@ -31,7 +31,8 @@ export default function VideoCard({ video }: { video: Video }) {
           {video.meta.name || "Unnamed Video"}
         </h2>
         <p className="text-sm text-gray-400">
-          Duration: {Math.round(video.duration / 60)}:{video.duration % 60}
+          Duration: {Math.round(video.duration / 60)}:
+          {Math.round(video.duration % 60)}
         </p>
       </div>
     </div>
