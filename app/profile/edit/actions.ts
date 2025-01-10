@@ -4,10 +4,22 @@ import getSession from "@/lib/session";
 import { userSchema } from "./schema";
 import db from "@/lib/db";
 import { redirect } from "next/navigation";
+import { CLOUDFLARE_API_URL, CLOUDFLARE_DELIVERY_URL } from "@/lib/constants";
+
+export async function getAvatar() {
+  const session = await getSession();
+  const user = await db.user.findUnique({
+    where: { id: session.id },
+    select: {
+      avatar: true,
+    },
+  });
+  return user;
+}
 
 export async function getUploadUrl() {
   const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
+    `${CLOUDFLARE_API_URL}${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
     {
       method: "POST",
       headers: {
@@ -37,6 +49,25 @@ export async function editAvatar(formData: FormData) {
           id: true,
         },
       });
+
+      const origin = formData.get("originAvatar");
+
+      if (origin?.toString().startsWith(CLOUDFLARE_DELIVERY_URL)) {
+        const imageId = origin
+          .toString()
+          .replace(CLOUDFLARE_DELIVERY_URL, "")
+          .split("/")[0];
+        await fetch(
+          `${CLOUDFLARE_API_URL}${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${process.env.CLOUDFLARE_TOKEN}`,
+            },
+          }
+        );
+      }
+
       redirect("/profile");
     }
   }
