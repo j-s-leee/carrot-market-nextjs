@@ -4,14 +4,15 @@ import { UserIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { userSchema, UserType } from "./schema";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { editAvatar, getUploadUrl } from "./actions";
+import { editAvatar, getAvatar, getUploadUrl } from "./actions";
 import { CLOUDFLARE_DELIVERY_URL } from "@/lib/constants";
 import Button from "@/components/button";
 
 export default function EditProfile() {
   const [preview, setPreview] = useState("");
+  const [originAvatar, setOriginAvatar] = useState("");
   const [uploadUrl, setUploadUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const {
@@ -22,6 +23,17 @@ export default function EditProfile() {
     resolver: zodResolver(userSchema),
   });
 
+  useEffect(() => {
+    async function fetchAvatar() {
+      const data = await getAvatar();
+      if (data) {
+        setPreview(data.avatar!);
+        setOriginAvatar(data.avatar!);
+      }
+    }
+    fetchAvatar();
+  }, []);
+
   const onImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const {
       target: { files },
@@ -30,6 +42,7 @@ export default function EditProfile() {
 
     const file = files[0];
     const url = URL.createObjectURL(file);
+
     setPreview(url);
     setFile(file);
     const { success, result } = await getUploadUrl();
@@ -39,7 +52,9 @@ export default function EditProfile() {
       setValue("avatar", `${CLOUDFLARE_DELIVERY_URL}${id}/avatar`);
     }
   };
+
   const router = useRouter();
+
   const onClose = () => {
     router.back();
   };
@@ -58,6 +73,7 @@ export default function EditProfile() {
 
     const formData = new FormData();
     formData.append("avatar", data.avatar);
+    formData.append("originAvatar", originAvatar);
     const errors = await editAvatar(formData);
     if (errors) {
     }
