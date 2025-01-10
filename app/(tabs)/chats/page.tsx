@@ -43,7 +43,6 @@ async function getChatRooms() {
 
 export default async function Chat() {
   const rooms = await getChatRooms();
-  console.log(rooms);
   return (
     <div className="p-5 gap-2 flex flex-col">
       {rooms.map((room) => (

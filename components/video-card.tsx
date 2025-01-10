@@ -10,7 +10,6 @@ type Video = {
 };
 
 export default function VideoCard({ video }: { video: Video }) {
-  console.log(video);
   return (
     <div className="border border-gray-700 rounded-md overflow-hidden">
       <div className="relative aspect-video">
