@@ -50,7 +50,6 @@ export default function EditProduct({
 
   const interceptAction = async (formData: FormData) => {
     const file = formData.get("photo");
-    console.log(formData);
     if (file) {
       const cloudflareForm = new FormData();
       cloudflareForm.append("file", file);

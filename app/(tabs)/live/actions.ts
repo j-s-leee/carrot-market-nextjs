@@ -32,7 +32,6 @@ export async function fetchStreamVideos() {
       console.error(`Failed to fetch videos for input ${stream.stream_id}`);
       return [];
     }
-    console.log(response);
     const videoData = await response.json();
     return videoData.result || [];
   });
